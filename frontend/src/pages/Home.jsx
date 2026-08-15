@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown, RefreshCw } from "lucide-react";
 import { api, formatTime } from "../lib/api";
 
 const STATES = [
@@ -18,10 +18,25 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [brief, setBrief] = useState(null);
+  const [briefLoading, setBriefLoading] = useState(false);
   const navigate = useNavigate();
 
   const load = () => api.home().then(setData).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.brief().then((d) => setBrief(d.brief)).catch(() => {});
+  }, []);
+
+  const refreshBrief = async () => {
+    setBriefLoading(true);
+    try {
+      const d = await api.refreshBrief();
+      setBrief(d.brief);
+    } finally {
+      setBriefLoading(false);
+    }
+  };
 
   const setState = async (s) => {
     setMenuOpen(false);
@@ -96,6 +111,25 @@ export default function Home() {
           </p>
         </motion.div>
       </AnimatePresence>
+
+      {/* Daily brief — Kukdi reading the day */}
+      {(brief || briefLoading) && (
+        <motion.section {...fade} className="mt-12 max-w-2xl group" data-testid="home-brief">
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C]">Today's brief</h2>
+            <button
+              onClick={refreshBrief}
+              data-testid="brief-refresh"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8F8C] hover:text-[#2C2D2B]"
+            >
+              <RefreshCw size={13} strokeWidth={1.5} className={briefLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+          <p className="font-editorial text-2xl md:text-[26px] italic text-[#5C605A] leading-snug" data-testid="brief-text">
+            {briefLoading && !brief ? "Kukdi is reading your day…" : brief}
+          </p>
+        </motion.section>
+      )}
 
       {/* Focus */}
       {data.focus?.length > 0 && (

@@ -34,6 +34,18 @@ memories, candidates, conversations, messages, companies, prep_items, people, ev
 knowledge, settings (singleton). Memory fields: type, title, description, confidence, status,
 source, relationships, tags, usable_for, created/updated/last_confirmed.
 
+## Implemented (2026-06 — V1.1)
+- **Streaming replies** in Talk — Kukdi's answer appears token by token over SSE
+  (`/api/conversation/stream`); candidate extraction runs as a resilient second pass
+  (guarded so the UI never hangs).
+- **Memory Relationships** — memories link to people/events/other memories; connections
+  resolve to labels and show as chips ("who told me that"). Endpoints: link/unlink + GET detail.
+- **Daily Brief** — one quiet, LLM-written morning note on Home that reads her day
+  (`/api/home/brief`, cached per day, refreshable).
+- **iPad Notes Inbox** — upload notes/PDFs into Knowledge via Emergent Object Storage;
+  text is extracted (pypdf) so uploads are searchable. Real storage, open single-user download.
+- Tested: frontend 100%; backend 96% (only a by-design LLM-non-determinism assertion).
+
 ## Implemented (2026-06 — V1 launch)
 - Adaptive **Home** with 8 states + editorial greeting, "What matters", "Today", "On your mind"
   surfaced memories, pending-candidate nudge, conversation pill, live state switcher.

@@ -3,6 +3,7 @@
 Covers Home, Conversation, Memory (incl. candidates), Dream Offer, People,
 Calendar (incl. LLM ask), Knowledge routes.
 """
+import json
 import os
 import time
 
@@ -244,3 +245,157 @@ class TestKnowledge:
         f = s.get(f"{BASE}/knowledge", params={"q": "unique_marker_xyz"}, timeout=15)
         assert any(i["id"] == kid for i in f.json()["items"])
         assert s.delete(f"{BASE}/knowledge/{kid}", timeout=15).status_code == 200
+
+
+# ---------- V2: Streaming ---------------------------------------------------
+class TestStreaming:
+    def test_stream_sse_events(self, s):
+        text = ("Please remember I like to rehearse my answers out loud "
+                "before interviews — that's a real habit.")
+        r = requests.post(f"{BASE}/conversation/stream",
+                          json={"text": text}, stream=True, timeout=120)
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+
+        events = []
+        tokens = []
+        for line in r.iter_lines(decode_unicode=True):
+            if not line or not line.startswith("data: "):
+                continue
+            payload = json.loads(line[len("data: "):])
+            events.append(payload["type"])
+            if payload["type"] == "token":
+                tokens.append(payload["content"])
+            elif payload["type"] == "candidates":
+                pytest.stream_candidates = payload["candidates"]
+            elif payload["type"] == "done":
+                break
+
+        assert events[0] == "meta"
+        assert "token" in events
+        assert "candidates" in events
+        assert "done" in events
+        full = "".join(tokens)
+        assert len(full.strip()) > 20, f"stream reply too short: {full!r}"
+
+    def test_stream_yields_candidate(self, s):
+        cands = getattr(pytest, "stream_candidates", None)
+        if cands is None:
+            pytest.skip("stream test did not run")
+        assert isinstance(cands, list)
+        assert len(cands) >= 1, f"expected candidate from memorable message, got {cands}"
+
+
+# ---------- V2: Daily Brief -------------------------------------------------
+class TestDailyBrief:
+    def test_brief_get_cache_and_refresh(self, s):
+        r1 = s.get(f"{BASE}/home/brief", timeout=60)
+        assert r1.status_code == 200
+        d1 = r1.json()
+        assert isinstance(d1.get("brief"), str) and len(d1["brief"]) > 0
+
+        r2 = s.get(f"{BASE}/home/brief", timeout=15)
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d2["cached"] is True
+        assert d2["brief"] == d1["brief"]
+
+        r3 = s.post(f"{BASE}/home/brief/refresh", timeout=60)
+        assert r3.status_code == 200
+        d3 = r3.json()
+        assert d3["cached"] is False
+        assert isinstance(d3["brief"], str) and len(d3["brief"]) > 0
+
+
+# ---------- V2: Memory Relationships ----------------------------------------
+class TestMemoryLinks:
+    def test_link_unlink_person(self, s):
+        # Get a real person
+        people = s.get(f"{BASE}/people", timeout=15).json()["people"]
+        assert people
+        person = people[0]
+
+        # Create a memory
+        m = s.post(f"{BASE}/memory",
+                   json={"type": "Insight", "title": "TEST_link_mem",
+                         "description": "linked memory"}, timeout=15).json()
+        mid = m["id"]
+
+        # LINK
+        r = s.post(f"{BASE}/memory/{mid}/link",
+                   json={"kind": "person", "ref_id": person["id"]}, timeout=15)
+        assert r.status_code == 200, r.text
+        conns = r.json()["connections"]
+        assert any(c["ref_id"] == person["id"] and c["label"] == person["name"]
+                   for c in conns), f"expected resolved label, got {conns}"
+
+        # GET memory shows connections
+        g = s.get(f"{BASE}/memory/{mid}", timeout=15)
+        assert g.status_code == 200
+        gd = g.json()
+        assert "connections" in gd
+        assert any(c["ref_id"] == person["id"] for c in gd["connections"])
+
+        # UNLINK
+        u = s.post(f"{BASE}/memory/{mid}/unlink",
+                   json={"kind": "person", "ref_id": person["id"]}, timeout=15)
+        assert u.status_code == 200
+        assert not any(c["ref_id"] == person["id"] for c in u.json()["connections"])
+
+        # cleanup
+        s.delete(f"{BASE}/memory/{mid}", timeout=15)
+
+
+# ---------- V2: Notes Inbox (Upload) ----------------------------------------
+class TestNotesInbox:
+    def test_upload_txt_and_download(self, s):
+        content = "TEST_upload_marker_abc123 — this note came from the iPad.".encode("utf-8")
+        files = {"file": ("test_upload.txt", content, "text/plain")}
+        # Use fresh session without json content-type header
+        r = requests.post(f"{BASE}/knowledge/upload", files=files, timeout=60)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["file_url"].startswith("/api/knowledge/files/")
+        assert d["original_filename"] == "test_upload.txt"
+        assert "TEST_upload_marker_abc123" in (d.get("body") or "")
+        kid = d["id"]
+
+        # appears in list
+        lst = s.get(f"{BASE}/knowledge", timeout=15).json()["items"]
+        assert any(i["id"] == kid for i in lst)
+
+        # searchable via extracted text
+        f = s.get(f"{BASE}/knowledge", params={"q": "TEST_upload_marker_abc123"}, timeout=15)
+        assert any(i["id"] == kid for i in f.json()["items"])
+
+        # download
+        path = d["file_url"].replace("/api/knowledge/files/", "")
+        dl = requests.get(f"{BASE}/knowledge/files/{path}", timeout=30)
+        assert dl.status_code == 200
+        assert dl.content == content
+        assert "text/plain" in dl.headers.get("content-type", "")
+
+        # cleanup
+        s.delete(f"{BASE}/knowledge/{kid}", timeout=15)
+
+    def test_upload_pdf_extracts_text(self, s):
+        # Build a minimal PDF using reportlab if available, else pypdf
+        try:
+            from reportlab.pdfgen import canvas
+            import io
+            buf = io.BytesIO()
+            c = canvas.Canvas(buf)
+            c.drawString(100, 750, "TEST_pdf_marker_xyz789 hello Kukdi")
+            c.save()
+            pdf_bytes = buf.getvalue()
+        except Exception:
+            pytest.skip("reportlab not available to build test pdf")
+
+        files = {"file": ("t.pdf", pdf_bytes, "application/pdf")}
+        r = requests.post(f"{BASE}/knowledge/upload", files=files, timeout=60)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["kind"] == "document"
+        assert "TEST_pdf_marker_xyz789" in (d.get("body") or ""), \
+            f"pdf text not extracted, body={d.get('body')!r}"
+        s.delete(f"{BASE}/knowledge/{d['id']}", timeout=15)

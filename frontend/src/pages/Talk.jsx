@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, Check, X } from "lucide-react";
-import { api } from "../lib/api";
+import { api, BACKEND } from "../lib/api";
 
 export default function Talk() {
   const [messages, setMessages] = useState([]);
@@ -36,13 +36,45 @@ export default function Talk() {
     const body = value.trim();
     if (!body) return;
     setText("");
-    setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "user", text: body }]);
+    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", text: body }]);
     setThinking(true);
+    const kukdiId = `k-${Date.now()}`;
+    let started = false;
     try {
-      const res = await api.sendMessage(body, cid ?? convId);
-      setConvId(res.conversation_id);
-      setMessages((m) => [...m, res.reply]);
-      if (res.candidates?.length) setCandidates((c) => [...res.candidates, ...c]);
+      const res = await fetch(`${BACKEND}/api/conversation/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: body, conversation_id: cid ?? convId }),
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(chunk, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop();
+        for (const f of frames) {
+          const line = f.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          let evt;
+          try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+          if (evt.type === "meta") {
+            setConvId(evt.conversation_id);
+          } else if (evt.type === "token") {
+            if (!started) {
+              started = true;
+              setThinking(false);
+              setMessages((m) => [...m, { id: kukdiId, role: "kukdi", text: evt.content }]);
+            } else {
+              setMessages((m) => m.map((x) => (x.id === kukdiId ? { ...x, text: x.text + evt.content } : x)));
+            }
+          } else if (evt.type === "candidates") {
+            if (evt.candidates?.length) setCandidates((c) => [...evt.candidates, ...c]);
+          }
+        }
+      }
     } finally {
       setThinking(false);
     }
@@ -59,7 +91,6 @@ export default function Talk() {
       <h1 className="font-editorial text-4xl md:text-5xl text-[#2C2D2B] mb-2">Talk to Kukdi</h1>
       <p className="text-[#8A8F8C] mb-10">Say it the way you'd think it. Kukdi listens for what's worth keeping.</p>
 
-      {/* Candidate confirmations */}
       <AnimatePresence>
         {candidates.length > 0 && (
           <motion.div
@@ -82,18 +113,10 @@ export default function Talk() {
                   <p className="text-sm text-[#8A8F8C]">{c.description}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => decide(c, true)}
-                    data-testid={`candidate-keep-${c.id}`}
-                    className="h-9 w-9 rounded-full bg-[#D4DDD7] text-[#2C2D2B] flex items-center justify-center hover:bg-[#9DB0A3] transition-colors"
-                  >
+                  <button onClick={() => decide(c, true)} data-testid={`candidate-keep-${c.id}`} className="h-9 w-9 rounded-full bg-[#D4DDD7] text-[#2C2D2B] flex items-center justify-center hover:bg-[#9DB0A3] transition-colors">
                     <Check size={16} strokeWidth={2} />
                   </button>
-                  <button
-                    onClick={() => decide(c, false)}
-                    data-testid={`candidate-dismiss-${c.id}`}
-                    className="h-9 w-9 rounded-full bg-[#E6E2DC] text-[#8A8F8C] flex items-center justify-center hover:bg-[#E2DFD8] transition-colors"
-                  >
+                  <button onClick={() => decide(c, false)} data-testid={`candidate-dismiss-${c.id}`} className="h-9 w-9 rounded-full bg-[#E6E2DC] text-[#8A8F8C] flex items-center justify-center hover:bg-[#E2DFD8] transition-colors">
                     <X size={16} strokeWidth={2} />
                   </button>
                 </div>
@@ -103,7 +126,6 @@ export default function Talk() {
         )}
       </AnimatePresence>
 
-      {/* Thread */}
       <div className="flex-1 space-y-6" data-testid="talk-thread">
         {messages.map((m) => (
           <motion.div
@@ -114,30 +136,19 @@ export default function Talk() {
             className={m.role === "user" ? "text-right" : ""}
           >
             {m.role === "kukdi" ? (
-              <p className="font-editorial text-2xl md:text-[28px] leading-snug text-[#2C2D2B] max-w-2xl">
-                {m.text}
-              </p>
+              <p className="font-editorial text-2xl md:text-[28px] leading-snug text-[#2C2D2B] max-w-2xl">{m.text}</p>
             ) : (
-              <span className="inline-block bg-[#EFECE7] rounded-[1.6rem] px-5 py-3 text-[#2C2D2B] max-w-xl text-left">
-                {m.text}
-              </span>
+              <span className="inline-block bg-[#EFECE7] rounded-[1.6rem] px-5 py-3 text-[#2C2D2B] max-w-xl text-left">{m.text}</span>
             )}
           </motion.div>
         ))}
         {thinking && (
-          <p className="text-[#8A8F8C] italic font-editorial text-xl" data-testid="talk-thinking">
-            Kukdi is thinking…
-          </p>
+          <p className="text-[#8A8F8C] italic font-editorial text-xl" data-testid="talk-thinking">Kukdi is thinking…</p>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <form
-        onSubmit={(e) => { e.preventDefault(); send(text); }}
-        className="sticky bottom-6 mt-10"
-        data-testid="talk-form"
-      >
+      <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="sticky bottom-6 mt-10" data-testid="talk-form">
         <div className="flex items-center gap-3 bg-[#EFECE7] rounded-[2rem] px-6 py-4 focus-within:ring-1 focus-within:ring-[#9DB0A3] transition-all">
           <input
             value={text}

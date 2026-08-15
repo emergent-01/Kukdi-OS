@@ -2,12 +2,16 @@ import axios from "axios";
 
 const BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+export const BACKEND = process.env.REACT_APP_BACKEND_URL;
+
 const http = axios.create({ baseURL: BASE });
 
 export const api = {
   // Home
   home: () => http.get("/home").then((r) => r.data),
   setState: (state) => http.post("/home/state", { state }).then((r) => r.data),
+  brief: () => http.get("/home/brief").then((r) => r.data),
+  refreshBrief: () => http.post("/home/brief/refresh").then((r) => r.data),
 
   // Conversation
   sendMessage: (text, conversation_id) =>
@@ -21,6 +25,9 @@ export const api = {
   updateMemory: (id, body) => http.patch(`/memory/${id}`, body).then((r) => r.data),
   confirmMemory: (id) => http.post(`/memory/${id}/confirm`).then((r) => r.data),
   archiveMemory: (id) => http.delete(`/memory/${id}`).then((r) => r.data),
+  getMemory: (id) => http.get(`/memory/${id}`).then((r) => r.data),
+  linkMemory: (id, body) => http.post(`/memory/${id}/link`, body).then((r) => r.data),
+  unlinkMemory: (id, body) => http.post(`/memory/${id}/unlink`, body).then((r) => r.data),
   pendingCandidates: () => http.get("/memory/candidates/pending").then((r) => r.data),
   confirmCandidate: (id, body = {}) =>
     http.post(`/memory/candidates/${id}/confirm`, body).then((r) => r.data),
@@ -51,6 +58,8 @@ export const api = {
   // Knowledge
   knowledge: (q) => http.get("/knowledge", { params: { q } }).then((r) => r.data),
   createKnowledge: (body) => http.post("/knowledge", body).then((r) => r.data),
+  uploadKnowledge: (formData) =>
+    http.post("/knowledge/upload", formData, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data),
   deleteKnowledge: (id) => http.delete(`/knowledge/${id}`).then((r) => r.data),
 };
 

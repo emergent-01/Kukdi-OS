@@ -5,6 +5,7 @@ import logging
 
 from database import client, db
 from seed import seed
+from storage import init_storage
 from routes import (calendar, conversation, dream, home, knowledge, memory,
                     people)
 
@@ -48,6 +49,11 @@ logger = logging.getLogger("kukdi")
 async def on_startup():
     result = await seed(force=False)
     logger.info(f"Kukdi startup seed: {result}")
+    try:
+        init_storage()
+        logger.info("Kukdi object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
 
 
 @app.on_event("shutdown")

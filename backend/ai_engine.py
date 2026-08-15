@@ -16,7 +16,8 @@ import json
 import os
 from typing import Dict, List
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import (LlmChat, StreamDone, TextDelta,
+                                           UserMessage)
 
 from models import HOME_STATES, MEMORY_TYPES, new_id
 
@@ -146,6 +147,71 @@ class KukdiReasoning:
             "candidates": cands,
             "detected_state": state,
         }
+
+    async def stream_reply(self, history: List[Dict], user_text: str, context: Dict):
+        """Stream Kukdi's natural reply token by token (no candidate extraction —
+        that happens in a second pass so streaming stays clean)."""
+        system = (
+            f"{_PERSONA}\n\n{_context_block(context)}\n\n"
+            "Reply to her in plain text — warm, brief, human. No JSON, no lists, "
+            "no markdown."
+        )
+        chat = self._chat(system, f"kukdi-stream-{new_id()}")
+        convo = ""
+        for m in history[-8:]:
+            who = "Little Miss" if m.get("role") == "user" else "Kukdi"
+            convo += f"{who}: {m.get('text')}\n"
+        prompt = (f"Recent conversation:\n{convo}\n" if convo else "") + (
+            f'Little Miss just said: "{user_text}"\nReply to her.'
+        )
+        async for ev in chat.stream_message(UserMessage(text=prompt)):
+            if isinstance(ev, TextDelta):
+                yield ev.content
+            elif isinstance(ev, StreamDone):
+                break
+
+    async def extract_candidates(self, user_text: str, reply: str, context: Dict) -> List[Dict]:
+        system = (
+            f"{_PERSONA}\n\n{_context_block(context)}\n\n"
+            "Extract candidate long-term memories from the exchange below. "
+            + _OUTPUT_CONTRACT
+            + '\nSet "reply" to an empty string; only "candidates" matters here.'
+        )
+        chat = self._chat(system, f"kukdi-extract-{new_id()}")
+        prompt = (
+            f'Little Miss said: "{user_text}"\nKukdi replied: "{reply}"\n\n'
+            "Return the JSON now."
+        )
+        try:
+            raw = await chat.send_message(UserMessage(text=prompt))
+            data = _parse_json(raw)
+        except Exception:
+            return []
+        cands = []
+        for c in data.get("candidates", []) or []:
+            if not c.get("title"):
+                continue
+            cands.append({
+                "type": c.get("type", "Insight"),
+                "title": c["title"],
+                "description": c.get("description", ""),
+                "confidence": float(c.get("confidence", 0.7)),
+                "tags": c.get("tags", []) or [],
+                "usable_for": c.get("usable_for", []) or [],
+            })
+        return cands
+
+    async def daily_brief(self, context: Dict, state: str, greeting: str) -> str:
+        system = (
+            f"{_PERSONA}\n\n{_context_block(context)}\n\n"
+            f"Today's felt state is '{state}'. Write ONE quiet morning brief for "
+            "Little Miss — two or three warm sentences that read her day and name "
+            "only the one or two things that truly matter. If she seems stretched, "
+            "lighten it. Plain text, no lists, no greeting header."
+        )
+        chat = self._chat(system, f"kukdi-brief-{new_id()}")
+        raw = await chat.send_message(UserMessage(text="Write today's brief."))
+        return raw.strip()
 
     async def answer(self, question: str, context: Dict) -> str:
         system = (

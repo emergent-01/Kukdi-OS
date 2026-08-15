@@ -82,6 +82,12 @@ class CandidateDecision(BaseModel):
     type: Optional[str] = None
 
 
+class LinkIn(BaseModel):
+    kind: str  # person | event | memory
+    ref_id: str
+    label: str = ""
+
+
 class CompanyIn(BaseModel):
     name: str
     tier: str = "target"

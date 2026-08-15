@@ -3,6 +3,8 @@ memories, which are persisted (pending) and returned for gentle confirmation.
 Kukdi never remembers silently.
 """
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
+import json
 
 from ai_engine import reasoning
 from context import build_context
@@ -72,6 +74,60 @@ async def send_message(body: MessageIn):
         "candidates": candidates,
         "detected_state": result["detected_state"],
     }
+
+
+@router.post("/stream")
+async def stream_message(body: MessageIn):
+    """SSE: streams Kukdi's reply token by token, then a second pass extracts
+    and persists candidate memories, emitted as a final event."""
+    conv = await _get_or_create_conversation(body.conversation_id)
+    history = await db.messages.find(
+        {"conversation_id": conv["id"]}, {"_id": 0}
+    ).sort("created", 1).to_list(50)
+
+    user_msg = {
+        "id": new_id(), "conversation_id": conv["id"], "role": "user",
+        "text": body.text, "created": now_iso(),
+    }
+    await db.messages.insert_one({k: v for k, v in user_msg.items()})
+    context = await build_context()
+
+    async def gen():
+        yield f"data: {json.dumps({'type': 'meta', 'conversation_id': conv['id']})}\n\n"
+        full = ""
+        async for token in reasoning.stream_reply(history, body.text, context):
+            full += token
+            yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+
+        kukdi_msg = {
+            "id": new_id(), "conversation_id": conv["id"], "role": "kukdi",
+            "text": full.strip() or "I'm here.", "created": now_iso(),
+        }
+        await db.messages.insert_one({k: v for k, v in kukdi_msg.items()})
+        await db.conversations.update_one({"id": conv["id"]}, {"$set": {"updated": now_iso()}})
+
+        candidates = []
+        try:
+            extracted = await reasoning.extract_candidates(body.text, full, context)
+        except Exception:
+            extracted = []
+        for c in extracted:
+            cand = {
+                "id": new_id(), "conversation_id": conv["id"], "status": "pending",
+                "type": c["type"], "title": c["title"], "description": c["description"],
+                "confidence": c["confidence"], "tags": c["tags"], "usable_for": c["usable_for"],
+                "source": "conversation", "created": now_iso(),
+            }
+            await db.candidates.insert_one({k: v for k, v in cand.items()})
+            candidates.append({k: v for k, v in cand.items() if k != "_id"})
+
+        yield f"data: {json.dumps({'type': 'candidates', 'candidates': candidates})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        gen(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/messages")

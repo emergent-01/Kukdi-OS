@@ -4,7 +4,8 @@ memories (from conversation) are confirmed or dismissed here.
 from fastapi import APIRouter, HTTPException
 
 from database import db
-from models import CandidateDecision, MemoryIn, MemoryUpdate, new_id, now_iso
+from models import (CandidateDecision, LinkIn, MemoryIn, MemoryUpdate, new_id,
+                   now_iso)
 
 router = APIRouter()
 
@@ -63,6 +64,59 @@ async def archive_memory(memory_id: str):
         {"id": memory_id}, {"$set": {"status": "archived", "updated": now_iso()}}
     )
     return {"ok": True}
+
+
+async def _resolve_links(relationships):
+    resolved = []
+    for r in relationships or []:
+        kind, ref = r.get("kind"), r.get("ref_id")
+        label = r.get("label")
+        if not label:
+            if kind == "person":
+                doc = await db.people.find_one({"id": ref}, {"_id": 0})
+                label = doc["name"] if doc else "Unknown"
+            elif kind == "event":
+                doc = await db.events.find_one({"id": ref}, {"_id": 0})
+                label = doc["title"] if doc else "Unknown"
+            elif kind == "memory":
+                doc = await db.memories.find_one({"id": ref}, {"_id": 0})
+                label = doc["title"] if doc else "Unknown"
+        resolved.append({"kind": kind, "ref_id": ref, "label": label})
+    return resolved
+
+
+@router.get("/{memory_id}")
+async def get_memory(memory_id: str):
+    m = await db.memories.find_one({"id": memory_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(404, "Memory not found")
+    m["connections"] = await _resolve_links(m.get("relationships", []))
+    return m
+
+
+@router.post("/{memory_id}/link")
+async def link_memory(memory_id: str, body: LinkIn):
+    m = await db.memories.find_one({"id": memory_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(404, "Memory not found")
+    rels = [r for r in (m.get("relationships") or []) if r.get("ref_id") != body.ref_id]
+    rels.append({"kind": body.kind, "ref_id": body.ref_id, "label": body.label})
+    await db.memories.update_one(
+        {"id": memory_id}, {"$set": {"relationships": rels, "updated": now_iso()}}
+    )
+    return {"connections": await _resolve_links(rels)}
+
+
+@router.post("/{memory_id}/unlink")
+async def unlink_memory(memory_id: str, body: LinkIn):
+    m = await db.memories.find_one({"id": memory_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(404, "Memory not found")
+    rels = [r for r in (m.get("relationships") or []) if r.get("ref_id") != body.ref_id]
+    await db.memories.update_one(
+        {"id": memory_id}, {"$set": {"relationships": rels, "updated": now_iso()}}
+    )
+    return {"connections": await _resolve_links(rels)}
 
 
 # ----- Candidate memories ----------------------------------------------------

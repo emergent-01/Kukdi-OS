@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
 
+from ai_engine import reasoning
+from context import build_context
 from database import db
 from models import HOME_STATES, StateOverrideIn, now_iso
 
@@ -148,6 +150,45 @@ def _relative(iso, now):
         return f"In {days} days · {dt.strftime('%a')}"
     except Exception:
         return ""
+
+
+async def _brief_context_state():
+    now = datetime.now(timezone.utc)
+    settings = await db.settings.find_one({"id": "singleton"}, {"_id": 0}) or {}
+    events_all = await db.events.find({}, {"_id": 0}).sort("start", 1).to_list(1000)
+    override = settings.get("home_state_override")
+    state = override if override in HOME_STATES else _derive_state(events_all, now)
+    return settings, state, now
+
+
+@router.get("/brief")
+async def get_brief():
+    settings, state, now = await _brief_context_state()
+    today_key = now.date().isoformat()
+    if settings.get("brief_date") == today_key and settings.get("brief_text"):
+        return {"brief": settings["brief_text"], "cached": True}
+
+    context = await build_context()
+    text = await reasoning.daily_brief(context, state, _time_greeting())
+    await db.settings.update_one(
+        {"id": "singleton"},
+        {"$set": {"brief_text": text, "brief_date": today_key, "updated": now_iso()}},
+        upsert=True,
+    )
+    return {"brief": text, "cached": False}
+
+
+@router.post("/brief/refresh")
+async def refresh_brief():
+    _, state, now = await _brief_context_state()
+    context = await build_context()
+    text = await reasoning.daily_brief(context, state, _time_greeting())
+    await db.settings.update_one(
+        {"id": "singleton"},
+        {"$set": {"brief_text": text, "brief_date": now.date().isoformat(), "updated": now_iso()}},
+        upsert=True,
+    )
+    return {"brief": text, "cached": False}
 
 
 @router.post("/state")
