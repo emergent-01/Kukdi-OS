@@ -8,6 +8,7 @@ import People from "@/pages/People";
 import Memory from "@/pages/Memory";
 import Calendar from "@/pages/Calendar";
 import Knowledge from "@/pages/Knowledge";
+import Reflection from "@/pages/Reflection";
 import More from "@/pages/More";
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/memory" element={<Memory />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/knowledge" element={<Knowledge />} />
+          <Route path="/reflection" element={<Reflection />} />
           <Route path="/more" element={<More />} />
         </Routes>
       </Layout>

@@ -2,7 +2,7 @@
 memories, which are persisted (pending) and returned for gentle confirmation.
 Kukdi never remembers silently.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 import json
 
@@ -10,6 +10,7 @@ from ai_engine import reasoning
 from context import build_context
 from database import db
 from models import MessageIn, new_id, now_iso
+from speech import transcribe_audio
 
 router = APIRouter()
 
@@ -128,6 +129,18 @@ async def stream_message(body: MessageIn):
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/transcribe")
+async def transcribe(file: UploadFile = File(...)):
+    ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else "webm"
+    if ext not in ("mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "ogg"):
+        raise HTTPException(415, "Unsupported audio format")
+    data = await file.read()
+    if len(data) > 25 * 1024 * 1024:  # Whisper's own 25 MB limit
+        raise HTTPException(413, "Audio too large (max 25 MB)")
+    text = await transcribe_audio(data, ext)
+    return {"text": text}
 
 
 @router.get("/messages")

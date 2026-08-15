@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, Check, X } from "lucide-react";
+import { ArrowUpRight, Check, X, Mic, Square } from "lucide-react";
 import { api, BACKEND } from "../lib/api";
 
 export default function Talk() {
@@ -10,9 +10,13 @@ export default function Talk() {
   const [convId, setConvId] = useState(null);
   const [text, setText] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const location = useLocation();
   const seededRef = useRef(false);
   const bottomRef = useRef(null);
+  const mediaRef = useRef(null);
+  const chunksRef = useRef([]);
 
   useEffect(() => {
     api.messages().then((d) => {
@@ -86,6 +90,38 @@ export default function Talk() {
     else await api.dismissCandidate(cand.id);
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setTranscribing(true);
+        try {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          const fd = new FormData();
+          fd.append("file", blob, "voice.webm");
+          const { text: spoken } = await api.transcribe(fd);
+          if (spoken) send(spoken);
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
+  };
+
+  const stopRecording = () => {
+    setRecording(false);
+    mediaRef.current?.stop();
+  };
+
   return (
     <div data-testid="talk-page" className="min-h-[70vh] flex flex-col">
       <h1 className="font-editorial text-4xl md:text-5xl text-[#2C2D2B] mb-2">Talk to Kukdi</h1>
@@ -145,15 +181,27 @@ export default function Talk() {
         {thinking && (
           <p className="text-[#8A8F8C] italic font-editorial text-xl" data-testid="talk-thinking">Kukdi is thinking…</p>
         )}
+        {transcribing && (
+          <p className="text-[#8A8F8C] italic font-editorial text-xl" data-testid="talk-transcribing">Listening back…</p>
+        )}
         <div ref={bottomRef} />
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="sticky bottom-6 mt-10" data-testid="talk-form">
         <div className="flex items-center gap-3 bg-[#EFECE7] rounded-[2rem] px-6 py-4 focus-within:ring-1 focus-within:ring-[#9DB0A3] transition-all">
+          <button
+            type="button"
+            onClick={recording ? stopRecording : startRecording}
+            data-testid="talk-mic"
+            className={`shrink-0 transition-colors ${recording ? "text-[#a9564a]" : "text-[#8A8F8C] hover:text-[#2C2D2B]"}`}
+            title={recording ? "Stop" : "Speak to Kukdi"}
+          >
+            {recording ? <Square size={19} strokeWidth={1.5} className="animate-pulse" /> : <Mic size={19} strokeWidth={1.5} />}
+          </button>
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type naturally…"
+            placeholder={recording ? "Listening…" : "Type naturally, or tap the mic…"}
             data-testid="talk-input"
             className="flex-1 bg-transparent outline-none text-[#2C2D2B] placeholder-[#8A8F8C] text-lg"
           />

@@ -4,7 +4,8 @@ import { ArrowUpRight } from "lucide-react";
 const SECTIONS = [
   { to: "/memory", title: "Memory", desc: "Everything Kukdi remembers about you — fully editable.", testId: "more-memory" },
   { to: "/calendar", title: "Calendar", desc: "Timetable, deadlines, exams and placements. Ask it anything.", testId: "more-calendar" },
-  { to: "/knowledge", title: "Knowledge", desc: "Documents, books, notes and the frameworks you're learning.", testId: "more-knowledge" },
+  { to: "/reflection", title: "Weekly Reflection", desc: "A gentle Sunday recap of your week, in Kukdi's voice.", testId: "more-reflection" },
+  { to: "/knowledge", title: "Knowledge", desc: "Documents, books, notes and frameworks. Search by meaning.", testId: "more-knowledge" },
   { to: "/talk", title: "Talk to Kukdi", desc: "The primary way in. Say it the way you'd think it.", testId: "more-talk" },
 ];
 

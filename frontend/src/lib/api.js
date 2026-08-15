@@ -18,6 +18,8 @@ export const api = {
     http.post("/conversation/message", { text, conversation_id }).then((r) => r.data),
   messages: (conversation_id) =>
     http.get("/conversation/messages", { params: { conversation_id } }).then((r) => r.data),
+  transcribe: (formData) =>
+    http.post("/conversation/transcribe", formData, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data),
 
   // Memory
   memories: (params) => http.get("/memory", { params }).then((r) => r.data),
@@ -41,6 +43,10 @@ export const api = {
   createPrep: (body) => http.post("/dream/prep", body).then((r) => r.data),
   updatePrep: (id, body) => http.patch(`/dream/prep/${id}`, body).then((r) => r.data),
   deletePrep: (id) => http.delete(`/dream/prep/${id}`).then((r) => r.data),
+  countdown: () => http.get("/dream/countdown").then((r) => r.data),
+  generateCountdown: (body = {}) => http.post("/dream/countdown/generate", body).then((r) => r.data),
+  toggleCountdownTask: (taskId, done) =>
+    http.patch(`/dream/countdown/task/${taskId}`, { done }).then((r) => r.data),
 
   // People
   people: () => http.get("/people").then((r) => r.data),
@@ -55,8 +61,13 @@ export const api = {
   deleteEvent: (id) => http.delete(`/calendar/${id}`).then((r) => r.data),
   askCalendar: (question) => http.post("/calendar/ask", { question }).then((r) => r.data),
 
+  // Reflection
+  weeklyReflection: (refresh = false) =>
+    http.get("/reflection/weekly", { params: { refresh } }).then((r) => r.data),
+
   // Knowledge
   knowledge: (q) => http.get("/knowledge", { params: { q } }).then((r) => r.data),
+  searchKnowledge: (question) => http.post("/knowledge/search", { question }).then((r) => r.data),
   createKnowledge: (body) => http.post("/knowledge", body).then((r) => r.data),
   uploadKnowledge: (formData) =>
     http.post("/knowledge/upload", formData, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data),

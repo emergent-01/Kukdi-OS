@@ -14,6 +14,7 @@ from models import new_id, now_iso
 COLLECTIONS = [
     "memories", "candidates", "conversations", "messages",
     "companies", "prep_items", "people", "events", "knowledge", "settings",
+    "countdowns",
 ]
 
 

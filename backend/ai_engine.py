@@ -224,5 +224,63 @@ class KukdiReasoning:
         raw = await chat.send_message(UserMessage(text=question))
         return raw.strip()
 
+    async def semantic_rank(self, query: str, items: List[Dict]) -> List[Dict]:
+        """Rank saved items by meaning for a query. Personal-scale data, so we let
+        the reasoning engine judge relevance directly (no embedding infra needed)."""
+        catalog = "\n".join(
+            f'{i}. id={it["id"]} | {it.get("title","")} — {it.get("snippet","")}'
+            for i, it in enumerate(items)
+        )
+        system = (
+            "You are Kukdi's librarian. Given a search intent and a catalog of the "
+            "user's saved items, return the items that match the MEANING of the "
+            "query (not just keywords), most relevant first. Return ONLY JSON: "
+            '{"results":[{"id":"<id>","reason":"<=8 words why it matches"}]}. '
+            "Include only genuinely relevant items; omit the rest. If nothing fits, "
+            'return {"results":[]}.'
+        )
+        chat = self._chat(system, f"kukdi-search-{new_id()}")
+        try:
+            raw = await chat.send_message(UserMessage(text=f"Query: {query}\n\nCatalog:\n{catalog}"))
+            data = _parse_json(raw)
+            return data.get("results", []) or []
+        except Exception:
+            return []
+
+    async def weekly_reflection(self, context: Dict, stats: Dict) -> str:
+        system = (
+            f"{_PERSONA}\n\n{_context_block(context)}\n\n"
+            f"This week's signals: {stats}.\n\n"
+            "Write a warm Sunday reflection for Little Miss in your own voice — "
+            "three or four sentences. Name one real win, gently acknowledge what "
+            "slipped if anything, and point softly at the week ahead. Never a list, "
+            "never clinical. Sound like someone who knows her."
+        )
+        chat = self._chat(system, f"kukdi-reflect-{new_id()}")
+        raw = await chat.send_message(UserMessage(text="Write this week's reflection."))
+        return raw.strip()
+
+    async def interview_plan(self, company: str, role: str, days_remaining: int,
+                             done_focus: List[str], context: Dict) -> List[Dict]:
+        done_note = (
+            f"She has already completed: {', '.join(done_focus)}. Do NOT repeat these; "
+            "build on them." if done_focus else "This is a fresh plan."
+        )
+        system = (
+            f"{_PERSONA}\n\n{_context_block(context)}\n\n"
+            f"Build a calm, day-by-day Product Management interview prep plan for the "
+            f"{company} {role} round, {days_remaining} days away. {done_note} "
+            "One theme per day, realistic for a busy MBA student. Return ONLY JSON: "
+            '{"days":[{"focus":"short theme","tasks":["task","task"]}]}. '
+            f"Return at most {min(days_remaining, 10)} days, 2-3 tasks each."
+        )
+        chat = self._chat(system, f"kukdi-plan-{new_id()}")
+        try:
+            raw = await chat.send_message(UserMessage(text="Generate the plan."))
+            data = _parse_json(raw)
+            return data.get("days", []) or []
+        except Exception:
+            return []
+
 
 reasoning = KukdiReasoning()

@@ -399,3 +399,148 @@ class TestNotesInbox:
         assert "TEST_pdf_marker_xyz789" in (d.get("body") or ""), \
             f"pdf text not extracted, body={d.get('body')!r}"
         s.delete(f"{BASE}/knowledge/{d['id']}", timeout=15)
+
+
+# ---------- V3: Semantic Search ---------------------------------------------
+class TestSemanticSearch:
+    def test_semantic_search_ranks_by_meaning(self, s):
+        # A design-interview query should surface CIRCLES / product design frameworks
+        # even without keyword overlap
+        r = s.post(f"{BASE}/knowledge/search",
+                   json={"question": "how do I structure a product design interview answer"},
+                   timeout=90)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "results" in d and isinstance(d["results"], list)
+        assert len(d["results"]) >= 1, f"expected at least one semantic result, got {d}"
+        first = d["results"][0]
+        assert "id" in first and "title" in first
+        assert "reason" in first and isinstance(first["reason"], str)
+        # ideally the top hit should relate to product design / CIRCLES framework
+        titles = " ".join((it.get("title", "") + " " + (it.get("summary", "") or ""))
+                          for it in d["results"]).lower()
+        # not strict but at least should not be all irrelevant
+        assert any(k in titles for k in ["circles", "product", "design", "interview", "framework", "case"]), \
+            f"top semantic results seem irrelevant: titles={[it.get('title') for it in d['results']]}"
+
+    def test_semantic_search_nonsense_returns_few(self, s):
+        r = s.post(f"{BASE}/knowledge/search",
+                   json={"question": "asdfqwer zxcvbn plumbus flurbo xylophone"},
+                   timeout=90)
+        assert r.status_code == 200
+        d = r.json()
+        # a nonsense query should return few or zero results
+        assert len(d["results"]) <= 5, f"expected few/no results for nonsense, got {len(d['results'])}"
+
+
+# ---------- V3: Voice Capture (Whisper) --------------------------------------
+class TestTranscribe:
+    def test_transcribe_missing_file_422(self):
+        r = requests.post(f"{BASE}/conversation/transcribe", timeout=15)
+        assert r.status_code == 422
+
+    def test_transcribe_real_audio(self):
+        # generate a real spoken clip via gTTS
+        try:
+            from gtts import gTTS
+            import io
+            tts = gTTS("Hello Kukdi, please remember I love running before exams.")
+            buf = io.BytesIO()
+            tts.write_to_fp(buf)
+            audio_bytes = buf.getvalue()
+        except Exception as e:
+            pytest.skip(f"gTTS not available: {e}")
+
+        files = {"file": ("test.mp3", audio_bytes, "audio/mpeg")}
+        r = requests.post(f"{BASE}/conversation/transcribe", files=files, timeout=120)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "text" in d
+        assert isinstance(d["text"], str)
+        assert len(d["text"].strip()) > 0, f"expected non-empty transcription, got {d}"
+
+
+# ---------- V3: Weekly Reflection -------------------------------------------
+class TestWeeklyReflection:
+    def test_weekly_reflection_cache_and_refresh(self, s):
+        # first call (may be cached from earlier manual testing; either way returns valid shape)
+        r1 = s.get(f"{BASE}/reflection/weekly", timeout=90)
+        assert r1.status_code == 200
+        d1 = r1.json()
+        assert "reflection" in d1 and isinstance(d1["reflection"], str)
+        assert len(d1["reflection"].strip()) > 0
+        assert "stats" in d1 and isinstance(d1["stats"], dict)
+        for k in ["attended_this_week", "coming_up", "prep_done"]:
+            assert k in d1["stats"], f"stats missing {k}: {d1['stats']}"
+
+        # second call same week -> cached=True
+        r2 = s.get(f"{BASE}/reflection/weekly", timeout=30)
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d2["cached"] is True
+        assert d2["reflection"] == d1["reflection"]
+
+        # refresh=true -> new reflection, cached=False
+        r3 = s.get(f"{BASE}/reflection/weekly", params={"refresh": "true"}, timeout=90)
+        assert r3.status_code == 200
+        d3 = r3.json()
+        assert d3["cached"] is False
+        assert isinstance(d3["reflection"], str) and len(d3["reflection"].strip()) > 0
+
+
+# ---------- V3: Interview Countdown -----------------------------------------
+class TestInterviewCountdown:
+    def test_generate_get_toggle_task(self, s):
+        # generate (targets next seeded placement/interview e.g. Google APM)
+        r = s.post(f"{BASE}/dream/countdown/generate", json={}, timeout=120)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "countdown" in d and d["countdown"]
+        cd = d["countdown"]
+        for k in ["company", "role", "target_date", "days_remaining",
+                  "days", "progress", "tasks_done", "tasks_total"]:
+            assert k in cd, f"countdown missing {k}"
+        assert isinstance(cd["days"], list) and len(cd["days"]) >= 1
+        first_day = cd["days"][0]
+        assert "focus" in first_day and "tasks" in first_day
+        assert len(first_day["tasks"]) >= 1
+        task = first_day["tasks"][0]
+        assert "id" in task and "text" in task and "done" in task
+        assert task["done"] is False
+
+        # GET returns same countdown
+        g = s.get(f"{BASE}/dream/countdown", timeout=15)
+        assert g.status_code == 200
+        gd = g.json()["countdown"]
+        assert gd["target_date"] == cd["target_date"]
+        assert gd["tasks_total"] == cd["tasks_total"]
+
+        # toggle first task done -> progress moves
+        tid = task["id"]
+        p = s.patch(f"{BASE}/dream/countdown/task/{tid}",
+                    json={"done": True}, timeout=15)
+        assert p.status_code == 200
+        pd = p.json()["countdown"]
+        assert pd["tasks_done"] >= 1
+        assert pd["progress"] > 0
+
+        # verify persisted
+        g2 = s.get(f"{BASE}/dream/countdown", timeout=15).json()["countdown"]
+        found = False
+        for day in g2["days"]:
+            for t in day["tasks"]:
+                if t["id"] == tid:
+                    assert t["done"] is True
+                    found = True
+        assert found, "toggled task not found in persisted plan"
+
+    def test_generate_with_company_id(self, s):
+        ov = s.get(f"{BASE}/dream/overview", timeout=15).json()
+        adobe = next((c for c in ov["companies"] if c["name"] == "Adobe"), None)
+        if not adobe:
+            pytest.skip("Adobe seed missing")
+        r = s.post(f"{BASE}/dream/countdown/generate",
+                   json={"company_id": adobe["id"]}, timeout=120)
+        assert r.status_code == 200
+        cd = r.json()["countdown"]
+        assert cd["company"] == "Adobe", f"expected Adobe, got {cd['company']}"

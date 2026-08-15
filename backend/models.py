@@ -176,5 +176,14 @@ class AskIn(BaseModel):
     question: str
 
 
+class CountdownGenerateIn(BaseModel):
+    company_id: Optional[str] = None
+    target_date: Optional[str] = None
+
+
+class TaskToggleIn(BaseModel):
+    done: bool
+
+
 class StateOverrideIn(BaseModel):
     state: Optional[str] = None  # null clears the override

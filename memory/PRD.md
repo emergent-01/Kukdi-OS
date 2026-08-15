@@ -34,6 +34,19 @@ memories, candidates, conversations, messages, companies, prep_items, people, ev
 knowledge, settings (singleton). Memory fields: type, title, description, confidence, status,
 source, relationships, tags, usable_for, created/updated/last_confirmed.
 
+## Implemented (2026-06 — V1.2)
+- **Semantic Search** (Knowledge) — "By meaning" mode; the reasoning engine ranks saved
+  notes/PDFs by intent (finds CIRCLES for "how to structure a design interview answer") with
+  a short "why it matched" for each. `POST /api/knowledge/search`.
+- **Voice Capture** (Talk) — mic button records via MediaRecorder → `POST /api/conversation/transcribe`
+  (OpenAI Whisper whisper-1) → transcript is sent as a normal streamed message. Size/format guarded.
+- **Weekly Reflection** — `/reflection` page + `GET /api/reflection/weekly`: a warm Sunday recap
+  in Kukdi's voice derived from real weekly signals, cached per ISO week, refreshable.
+- **Interview Countdown** (Dream Offer) — `POST /api/dream/countdown/generate` builds an adaptive
+  day-by-day PM prep plan toward the next placement round; tappable tasks recompute progress;
+  "Reshape plan" regenerates around what's done. Has a resilient fallback plan on LLM failure.
+- Tested: frontend 100%; backend 93% (only by-design LLM dedup flakiness on legacy tests).
+
 ## Implemented (2026-06 — V1.1)
 - **Streaming replies** in Talk — Kukdi's answer appears token by token over SSE
   (`/api/conversation/stream`); candidate extraction runs as a resilient second pass

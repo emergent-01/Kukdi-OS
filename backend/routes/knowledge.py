@@ -7,11 +7,30 @@ import uuid
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response
 
+from ai_engine import reasoning
 from database import db
-from models import KnowledgeIn, new_id, now_iso
+from models import AskIn, KnowledgeIn, new_id, now_iso
 from storage import APP_NAME, MIME_TYPES, extract_text, get_object, put_object
 
 router = APIRouter()
+
+
+@router.post("/search")
+async def semantic_search(body: AskIn):
+    items = await db.knowledge.find({}, {"_id": 0}).to_list(500)
+    catalog = [
+        {"id": it["id"], "title": it.get("title", ""),
+         "snippet": (it.get("summary", "") + " " + (it.get("body", "") or ""))[:280]}
+        for it in items
+    ]
+    ranked = await reasoning.semantic_rank(body.question, catalog)
+    by_id = {it["id"]: it for it in items}
+    results = []
+    for r in ranked:
+        it = by_id.get(r.get("id"))
+        if it:
+            results.append({**it, "reason": r.get("reason", "")})
+    return {"results": results, "query": body.question}
 
 
 @router.get("")
