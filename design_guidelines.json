@@ -1,0 +1,85 @@
+{
+  "project_identity": {
+    "name": "Kukdi",
+    "description": "A Personal Operating System for a single user (Little Miss, MBA Student, PM Aspirant). Solves mental fragmentation. Intelligence is the product.",
+    "design_philosophy": "Premium. Editorial. Quiet. Warm. Minimal. The interface should almost disappear. Context over features. Calm over notifications."
+  },
+  "theme": "light",
+  "archetype": "Organic & Earthy",
+  "typography": {
+    "heading_font": "Cormorant Garamond",
+    "body_font": "Manrope",
+    "strategy": "Editorial & Quiet. Headings use Cormorant Garamond for a premium, human, book-like feel. UI and body text use Manrope for crisp, quiet readability. Avoid default tech fonts (Inter/Roboto).",
+    "hierarchy": {
+      "h1": "text-4xl md:text-5xl lg:text-6xl tracking-tight leading-none font-medium text-[#2C2D2B]",
+      "h2": "text-2xl md:text-3xl lg:text-4xl tracking-tight font-medium text-[#2C2D2B]",
+      "h3": "text-xl md:text-2xl font-medium text-[#2C2D2B]",
+      "body": "text-base leading-relaxed text-[#4A4E4D]",
+      "ui_labels": "text-xs tracking-[0.15em] uppercase text-[#737875]",
+      "quote_memory": "font-serif text-xl md:text-2xl italic text-[#5C605A] border-l border-[#9DB0A3] pl-6"
+    }
+  },
+  "colors": {
+    "background": "#F7F6F2",
+    "surface": "#EFECE7",
+    "surface_hover": "#E6E2DC",
+    "text_primary": "#2C2D2B",
+    "text_secondary": "#5C605A",
+    "text_muted": "#8A8F8C",
+    "accent_sage": "#9DB0A3",
+    "accent_sage_light": "#D4DDD7",
+    "border_subtle": "#E2DFD8"
+  },
+  "layout": {
+    "desktop": "Fixed 240px to 280px left rail containing navigation and user profile context. Main content area takes remaining width, heavily padded (p-12 or p-20 lg:px-32) to maintain excellent whitespace and a 'blank canvas' feel.",
+    "mobile": "Bottom navigation bar (fixed bottom-0, solid surface background #EFECE7 with border-t border-[#E2DFD8], z-50). Main content area padded p-6 pb-32.",
+    "spacing": "Generous Spacing Philosophy. Use gap-8, gap-12, py-16, py-24. Avoid tight packing. Elements should breathe heavily.",
+    "cards_and_containers": "Avoid standard 'SaaS cards' with drop shadows. Use typography and whitespace to group elements. When boundaries are strictly needed, use a subtle 1px border (border-[#E2DFD8]) or a soft surface background (bg-[#EFECE7]) with rounded-2xl or rounded-3xl and NO shadow."
+  },
+  "motion": {
+    "strategy": "Calm, slow, and fluid. Nothing should snap abruptly. Micro-animations should feel like gentle breathing.",
+    "libraries": [
+      "framer-motion"
+    ],
+    "transitions": "State changes (e.g., Adaptive Home states) should use framer-motion crossfades: { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }.",
+    "micro_interactions": "Hover states on interactive elements should gently transition background or text colors over 0.3s. No bouncy scale animations."
+  },
+  "components": {
+    "navigation": "Left Rail (Desktop): Active states indicated by text darkening to #2C2D2B and a subtle sage dot on the left. Inactive states are text-[#737875]. No aggressive highlight boxes. Must be fixed and sit seamlessly on the background.",
+    "adaptive_home": "A single page canvas that fades content in/out based on the user's state (Quiet, Busy, Interview). Uses a large editorial greeting. Content flows sequentially downwards. NO widget dashboards. NO grid of metric cards.",
+    "conversation_input": "The primary input mechanism. A wide, soft pill fixed at the bottom or inline. bg-[#EFECE7] rounded-[2rem] px-6 py-4 focus-within:ring-1 focus-within:ring-[#9DB0A3] transition-all. No techy 'Send' icon, just a minimal arrow or text 'Press Enter'.",
+    "memory_system": "Renders like a beautifully typeset journal or transcript. Meta-data (Confidence, Type) shown as tiny uppercase labels (text-xs tracking-widest).",
+    "dream_offer_pipeline": "For the PM interview tracking, do NOT make it look like Jira or Trello. Make it look like an elegant, minimal list or an editorial timeline. Columns separated by generous whitespace, not lines.",
+    "people_cards": "Minimal profiles. large typography for names, small descriptions, circular soft avatars. No complex data grids."
+  },
+  "media": {
+    "strategy": "Soft, atmospheric imagery. No bright tech illustrations. Images should evoke calm, focus, and organic nature.",
+    "image_urls": {
+      "user_avatar": "https://images.unsplash.com/photo-1656236577401-6c60e0baeed5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHxpbmRpYW4lMjB3b21hbiUyMG1iYSUyMHN0dWRlbnQlMjBwb3J0cmFpdHxlbnwwfHx8fDE3ODY4MDYzNTJ8MA&ixlib=rb-4.1.0&q=85",
+      "calm_state_background": "https://images.unsplash.com/photo-1491929536571-bdbc57e72324?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwzfHxjYWxtJTIwbWluaW1hbGlzdCUyMG5hdHVyZXxlbnwwfHx8fDE3ODY4MDYzNTN8MA&ixlib=rb-4.1.0&q=85",
+      "sage_abstract_accent": "https://images.unsplash.com/photo-1538437616090-64c780652422?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMG1pbmltYWwlMjBzYWdlJTIwZ3JlZW58ZW58MHx8fHwxNzg2ODA2MzUyfDA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Ensure all created files use .js or .jsx extensions (not .tsx) as this is a JavaScript setup.",
+    "Implement the 'Adaptive Home' as the default route. Build a state-switcher (dropdown or subtle tabs) to toggle between states (Quiet, Normal, Overwhelmed) to demonstrate the UI adapting.",
+    "Build the primary interface to feel like a high-end digital journal (like Notion meets a Kinfolk magazine).",
+    "Use Lucide-React for icons (@lucide/react), but use them extremely sparingly. Rely on typography and whitespace.",
+    "Never use pure white (#FFFFFF) for the main background. Set body background to #F7F6F2.",
+    "Use framer-motion for all mount/unmount animations to achieve the 'quietly appearing' feel.",
+    "Do NOT use transparent backgrounds on any floating elements (menus, modals, fixed navs). Always use the solid #EFECE7 or #F7F6F2 to avoid text collision.",
+    "Ensure every interactive element (button, input, link) has a descriptive kebab-case 'data-testid' attribute (e.g., data-testid='home-nav-link').",
+    "Avoid Shadcn 'Card' components with borders/shadows. Strip them down to raw divs with padding, or just use typography to structure content."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "The app must feel like a premium, printed editorial magazine or a quiet digital journal. NOT a productivity SaaS dashboard.",
+    "Do NOT center align the app container, i.e., do not add `.App { text-align: center; }`. Left-align content to respect natural reading flow.",
+    "Use 2-3x more spacing than typical web apps (p-8, p-12, gap-12). Cramped designs look cheap.",
+    "No drop shadows anywhere. Use flat surfaces with subtle color shifts (#EFECE7 vs #F7F6F2) to denote depth.",
+    "NEVER use placeholder text for images. Use the provided image_urls.",
+    "Never use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons. Use a minimalist icon set or rely entirely on typography.",
+    "Every interaction needs micro-animations (hover states, slow transitions) without bouncy spring physics.",
+    "All interactive elements MUST include a data-testid attribute for robust automated testing."
+  ]
+}

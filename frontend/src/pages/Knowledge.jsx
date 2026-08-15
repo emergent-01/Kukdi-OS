@@ -1,0 +1,73 @@
+import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { api } from "../lib/api";
+import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
+
+const KIND_LABEL = { note: "Note", book: "Book", framework: "Framework", case: "Case", document: "Document" };
+
+export default function Knowledge() {
+  const [items, setItems] = useState([]);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(null);
+  const [form, setForm] = useState({ kind: "note", title: "", summary: "", body: "" });
+
+  const load = () => api.knowledge(q || undefined).then((d) => setItems(d.items || []));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [q]);
+
+  const add = async () => {
+    if (!form.title.trim()) return;
+    await api.createKnowledge(form);
+    setOpen(false);
+    setForm({ kind: "note", title: "", summary: "", body: "" });
+    load();
+  };
+
+  return (
+    <div data-testid="knowledge-page">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C]">Knowledge</span>
+        <button onClick={() => setOpen(true)} data-testid="add-knowledge-btn" className="flex items-center gap-1.5 text-sm text-[#5C605A] hover:text-[#2C2D2B] transition-colors">
+          <Plus size={15} strokeWidth={1.5} /> Add
+        </button>
+      </div>
+      <h1 className="font-editorial text-5xl md:text-6xl text-[#2C2D2B] mb-8">Everything worth keeping</h1>
+
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search knowledge…" data-testid="knowledge-search" className="bg-[#EFECE7] rounded-full px-5 py-2 text-sm outline-none focus:ring-1 focus:ring-[#9DB0A3] mb-10 w-full max-w-md" />
+
+      <div className="space-y-6" data-testid="knowledge-list">
+        {items.map((it) => (
+          <div key={it.id} className="border-b border-[#E2DFD8] pb-6 group" data-testid={`knowledge-${it.id}`}>
+            <span className="text-[10px] tracking-[0.15em] uppercase text-[#9DB0A3]">{KIND_LABEL[it.kind]}</span>
+            <div className="flex items-baseline justify-between">
+              <button onClick={() => setActive(it)} data-testid={`knowledge-open-${it.id}`} className="font-editorial text-2xl text-[#2C2D2B] text-left hover:text-[#5C605A] transition-colors">{it.title}</button>
+              <button onClick={async () => { await api.deleteKnowledge(it.id); load(); }} data-testid={`knowledge-delete-${it.id}`} className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8F8C] hover:text-[#a9564a]"><Trash2 size={14} /></button>
+            </div>
+            {it.summary && <p className="text-[#5C605A] mt-1">{it.summary}</p>}
+          </div>
+        ))}
+      </div>
+
+      <Modal open={!!active} onClose={() => setActive(null)} title={active?.title || ""} testId="knowledge-view-modal">
+        {active && (
+          <div>
+            <span className="text-[10px] tracking-[0.15em] uppercase text-[#9DB0A3]">{KIND_LABEL[active.kind]}</span>
+            <p className="text-[#5C605A] mt-4 leading-relaxed whitespace-pre-wrap">{active.body || active.summary}</p>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Add knowledge" testId="knowledge-modal">
+        <Field label="Kind">
+          <select className={inputClass} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} data-testid="knowledge-kind-input">
+            {Object.entries(KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Title"><input className={inputClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="knowledge-title-input" /></Field>
+        <Field label="Summary"><input className={inputClass} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} data-testid="knowledge-summary-input" /></Field>
+        <Field label="Body"><textarea className={inputClass} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} data-testid="knowledge-body-input" /></Field>
+        <PrimaryButton onClick={add} data-testid="knowledge-save-btn">Add</PrimaryButton>
+      </Modal>
+    </div>
+  );
+}

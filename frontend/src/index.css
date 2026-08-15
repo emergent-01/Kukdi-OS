@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Manrope:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 45 22% 96%;
+        --foreground: 60 3% 17%;
+        --card: 40 18% 92%;
+        --card-foreground: 60 3% 17%;
+        --popover: 40 18% 92%;
+        --popover-foreground: 60 3% 17%;
+        --primary: 60 3% 17%;
+        --primary-foreground: 45 22% 96%;
+        --secondary: 40 14% 88%;
+        --secondary-foreground: 60 3% 17%;
+        --muted: 40 14% 88%;
+        --muted-foreground: 100 4% 55%;
+        --accent: 132 12% 66%;
+        --accent-foreground: 60 3% 17%;
+        --destructive: 8 40% 52%;
+        --destructive-foreground: 45 22% 96%;
+        --border: 40 16% 86%;
+        --input: 40 16% 86%;
+        --ring: 132 12% 66%;
+        --radius: 1rem;
+    }
+}
+
+* {
+    border-color: hsl(var(--border));
+}
+
+html, body {
+    margin: 0;
+    background-color: #F7F6F2;
+    color: #2C2D2B;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+    background: #D4DDD7;
+    color: #2C2D2B;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E2DFD8; border-radius: 999px; border: 3px solid #F7F6F2; }
+::-webkit-scrollbar-thumb:hover { background: #D4DDD7; }
+
+.font-editorial { font-family: 'Cormorant Garamond', Georgia, serif; }
+
+@layer base {
+    [data-debug-wrapper="true"] { display: contents !important; }
+}

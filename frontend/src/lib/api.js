@@ -1,0 +1,79 @@
+import axios from "axios";
+
+const BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const http = axios.create({ baseURL: BASE });
+
+export const api = {
+  // Home
+  home: () => http.get("/home").then((r) => r.data),
+  setState: (state) => http.post("/home/state", { state }).then((r) => r.data),
+
+  // Conversation
+  sendMessage: (text, conversation_id) =>
+    http.post("/conversation/message", { text, conversation_id }).then((r) => r.data),
+  messages: (conversation_id) =>
+    http.get("/conversation/messages", { params: { conversation_id } }).then((r) => r.data),
+
+  // Memory
+  memories: (params) => http.get("/memory", { params }).then((r) => r.data),
+  createMemory: (body) => http.post("/memory", body).then((r) => r.data),
+  updateMemory: (id, body) => http.patch(`/memory/${id}`, body).then((r) => r.data),
+  confirmMemory: (id) => http.post(`/memory/${id}/confirm`).then((r) => r.data),
+  archiveMemory: (id) => http.delete(`/memory/${id}`).then((r) => r.data),
+  pendingCandidates: () => http.get("/memory/candidates/pending").then((r) => r.data),
+  confirmCandidate: (id, body = {}) =>
+    http.post(`/memory/candidates/${id}/confirm`, body).then((r) => r.data),
+  dismissCandidate: (id) => http.post(`/memory/candidates/${id}/dismiss`).then((r) => r.data),
+
+  // Dream Offer
+  dreamOverview: () => http.get("/dream/overview").then((r) => r.data),
+  createCompany: (body) => http.post("/dream/companies", body).then((r) => r.data),
+  updateCompany: (id, body) => http.patch(`/dream/companies/${id}`, body).then((r) => r.data),
+  deleteCompany: (id) => http.delete(`/dream/companies/${id}`).then((r) => r.data),
+  createPrep: (body) => http.post("/dream/prep", body).then((r) => r.data),
+  updatePrep: (id, body) => http.patch(`/dream/prep/${id}`, body).then((r) => r.data),
+  deletePrep: (id) => http.delete(`/dream/prep/${id}`).then((r) => r.data),
+
+  // People
+  people: () => http.get("/people").then((r) => r.data),
+  createPerson: (body) => http.post("/people", body).then((r) => r.data),
+  updatePerson: (id, body) => http.patch(`/people/${id}`, body).then((r) => r.data),
+  deletePerson: (id) => http.delete(`/people/${id}`).then((r) => r.data),
+
+  // Calendar
+  events: () => http.get("/calendar").then((r) => r.data),
+  createEvent: (body) => http.post("/calendar", body).then((r) => r.data),
+  updateEvent: (id, body) => http.patch(`/calendar/${id}`, body).then((r) => r.data),
+  deleteEvent: (id) => http.delete(`/calendar/${id}`).then((r) => r.data),
+  askCalendar: (question) => http.post("/calendar/ask", { question }).then((r) => r.data),
+
+  // Knowledge
+  knowledge: (q) => http.get("/knowledge", { params: { q } }).then((r) => r.data),
+  createKnowledge: (body) => http.post("/knowledge", body).then((r) => r.data),
+  deleteKnowledge: (id) => http.delete(`/knowledge/${id}`).then((r) => r.data),
+};
+
+export function formatTime(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+export function formatDay(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+export function confidenceLabel(c) {
+  if (c >= 0.85) return "High";
+  if (c >= 0.6) return "Medium";
+  return "Low";
+}
