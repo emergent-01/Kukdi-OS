@@ -6,9 +6,27 @@ from fastapi import APIRouter, HTTPException
 
 from ai_engine import reasoning
 from database import db
-from models import StoryIn, StoryUpdate, new_id, now_iso
+from models import AskIn, StoryIn, StoryUpdate, new_id, now_iso
 
 router = APIRouter()
+
+
+@router.post("/match")
+async def match_stories(body: AskIn):
+    stories = await db.stories.find({}, {"_id": 0}).to_list(500)
+    catalog = [
+        {"id": s["id"], "title": s.get("title", ""), "themes": s.get("themes", []),
+         "snippet": (s.get("situation", "") + " " + s.get("result", ""))[:240]}
+        for s in stories
+    ]
+    ranked = await reasoning.match_stories(body.question, catalog)
+    by_id = {s["id"]: s for s in stories}
+    results = []
+    for r in ranked:
+        s = by_id.get(r.get("id"))
+        if s:
+            results.append({**s, "fit": r.get("fit", "good"), "reason": r.get("reason", "")})
+    return {"results": results, "query": body.question}
 
 
 @router.get("")

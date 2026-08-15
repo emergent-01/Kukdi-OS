@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ChevronDown, RefreshCw, Gift, Clock, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, RefreshCw, Gift, Clock, Clock3, X } from "lucide-react";
 import { api, formatTime } from "../lib/api";
 
 const STATES = [
@@ -33,6 +33,11 @@ export default function Home() {
   const dismissReminder = async (id) => {
     setReminders((r) => r.filter((x) => x.id !== id));
     await api.dismissReminder(id);
+  };
+
+  const snoozeReminder = async (id) => {
+    setReminders((r) => r.filter((x) => x.id !== id));
+    await api.snoozeReminder(id);
   };
 
   const refreshBrief = async () => {
@@ -158,14 +163,24 @@ export default function Home() {
                 )}
                 <span className="flex-1 text-[#2C2D2B]">{r.title}</span>
                 <span className="text-sm text-[#8A8F8C] whitespace-nowrap">{r.detail}</span>
-                <button
-                  onClick={() => dismissReminder(r.id)}
-                  data-testid={`reminder-dismiss-${r.id}`}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8F8C] hover:text-[#2C2D2B]"
-                  title="Dismiss"
-                >
-                  <X size={15} strokeWidth={1.5} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => snoozeReminder(r.id)}
+                    data-testid={`reminder-snooze-${r.id}`}
+                    className="text-[#8A8F8C] hover:text-[#2C2D2B] p-1"
+                    title="Snooze until tomorrow"
+                  >
+                    <Clock3 size={15} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    onClick={() => dismissReminder(r.id)}
+                    data-testid={`reminder-dismiss-${r.id}`}
+                    className="text-[#8A8F8C] hover:text-[#2C2D2B] p-1"
+                    title="Dismiss"
+                  >
+                    <X size={15} strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

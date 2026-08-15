@@ -122,7 +122,12 @@ async def _compute():
 
     settings = await db.settings.find_one({"id": "singleton"}, {"_id": 0}) or {}
     dismissed = set(settings.get("dismissed_reminders", []))
-    reminders = [r for r in reminders if r["id"] not in dismissed]
+    snoozed = settings.get("snoozed_reminders", {}) or {}
+    today = datetime.now(timezone.utc).date().isoformat()
+    reminders = [
+        r for r in reminders
+        if r["id"] not in dismissed and snoozed.get(r["id"], "") <= today
+    ]
     reminders.sort(key=lambda r: (-r["priority"], r["days"]))
     return reminders
 
@@ -137,6 +142,18 @@ async def dismiss(body: ReminderDismissIn):
     await db.settings.update_one(
         {"id": "singleton"},
         {"$addToSet": {"dismissed_reminders": body.id}, "$set": {"updated": now_iso()}},
+        upsert=True,
+    )
+    return {"reminders": await _compute()}
+
+
+@router.post("/snooze")
+async def snooze(body: ReminderDismissIn):
+    from datetime import timedelta
+    tomorrow = (datetime.now(timezone.utc).date() + timedelta(days=1)).isoformat()
+    await db.settings.update_one(
+        {"id": "singleton"},
+        {"$set": {f"snoozed_reminders.{body.id}": tomorrow, "updated": now_iso()}},
         upsert=True,
     )
     return {"reminders": await _compute()}

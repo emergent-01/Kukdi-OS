@@ -315,4 +315,29 @@ class KukdiReasoning:
                     "feedback": "I couldn't refine this just now — try again in a moment."}
 
 
+    async def match_stories(self, query: str, stories: List[Dict]) -> List[Dict]:
+        """Rank the user's STAR stories by fit for a company or interview question."""
+        catalog = "\n".join(
+            f'{i}. id={s["id"]} | {s.get("title","")} | themes: {", ".join(s.get("themes", []) or [])} '
+            f'| {s.get("snippet","")}'
+            for i, s in enumerate(stories)
+        )
+        system = (
+            f"{_PERSONA}\n\n"
+            "You are helping Little Miss pick which of her STAR interview stories best "
+            "fits a company or an interview question. Consider the theme, the skill it "
+            "demonstrates, and the company's culture. Return ONLY JSON: "
+            '{"results":[{"id":"<id>","fit":"strong|good|stretch",'
+            '"reason":"<=14 words on why it fits this ask"}]}, best first. '
+            "Include only genuinely relevant stories; omit weak fits."
+        )
+        chat = self._chat(system, f"kukdi-match-{new_id()}")
+        try:
+            raw = await chat.send_message(UserMessage(text=f"Ask: {query}\n\nStories:\n{catalog}"))
+            data = _parse_json(raw)
+            return data.get("results", []) or []
+        except Exception:
+            return []
+
+
 reasoning = KukdiReasoning()

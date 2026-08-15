@@ -14,6 +14,7 @@ export const api = {
   refreshBrief: () => http.post("/home/brief/refresh").then((r) => r.data),
   reminders: () => http.get("/reminders").then((r) => r.data),
   dismissReminder: (id) => http.post("/reminders/dismiss", { id }).then((r) => r.data),
+  snoozeReminder: (id) => http.post("/reminders/snooze", { id }).then((r) => r.data),
 
   // Conversation
   sendMessage: (text, conversation_id) =>
@@ -72,6 +73,7 @@ export const api = {
   createStory: (body) => http.post("/stories", body).then((r) => r.data),
   updateStory: (id, body) => http.patch(`/stories/${id}`, body).then((r) => r.data),
   polishStory: (id) => http.post(`/stories/${id}/polish`).then((r) => r.data),
+  matchStories: (question) => http.post("/stories/match", { question }).then((r) => r.data),
   deleteStory: (id) => http.delete(`/stories/${id}`).then((r) => r.data),
 
   // Knowledge

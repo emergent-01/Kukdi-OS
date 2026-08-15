@@ -34,6 +34,15 @@ memories, candidates, conversations, messages, companies, prep_items, people, ev
 knowledge, settings (singleton). Memory fields: type, title, description, confidence, status,
 source, relationships, tags, usable_for, created/updated/last_confirmed.
 
+## Implemented (2026-06 — V1.4)
+- **Story Matcher** — `POST /api/stories/match {question}`: Kukdi ranks the user's STAR stories
+  by fit for a company or interview question (fit = strong/good/stretch + a short why). Surfaced
+  as a matcher bar on `/stories`; tapping a result opens that story.
+- **Snooze Nudges** — `POST /api/reminders/snooze {id}`: a Home reminder can be snoozed to
+  reappear tomorrow instead of being dismissed forever (stored per-id in settings, excluded from
+  compute while snoozed_until > today). Home rows now show both snooze and dismiss on hover.
+- Tested: frontend 100%, backend 100% (41/41). No defects.
+
 ## Implemented (2026-06 — V1.3)
 - **Smart Reminders** — calm, derived, dismissable nudges on Home (`GET /api/reminders`,
   `POST /api/reminders/dismiss`): nearing deadlines/exams/placements, friends' birthdays

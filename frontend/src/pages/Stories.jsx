@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, Wand2, ArrowUpRight } from "lucide-react";
 import { api } from "../lib/api";
 import { Modal, Field, inputClass, PrimaryButton } from "../components/Modal";
 
@@ -19,9 +19,25 @@ export default function Stories() {
   const [form, setForm] = useState(EMPTY);
   const [polishing, setPolishing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [matchQuery, setMatchQuery] = useState("");
+  const [matchResults, setMatchResults] = useState(null);
+  const [matching, setMatching] = useState(false);
 
   const load = () => api.stories().then((d) => setStories(d.stories || []));
   useEffect(() => { load(); }, []);
+
+  const runMatch = async (e) => {
+    e?.preventDefault();
+    if (!matchQuery.trim()) return;
+    setMatching(true);
+    setMatchResults(null);
+    try {
+      const d = await api.matchStories(matchQuery.trim());
+      setMatchResults(d.results || []);
+    } finally {
+      setMatching(false);
+    }
+  };
 
   const add = async () => {
     if (!form.title.trim()) return;
@@ -67,7 +83,48 @@ export default function Stories() {
         </button>
       </div>
       <h1 className="font-editorial text-5xl md:text-6xl text-[#2C2D2B] mb-3">Your stories, ready</h1>
-      <p className="text-[#8A8F8C] mb-12 max-w-xl">Shape a STAR story once and let Kukdi polish it — then reuse it across every company.</p>
+      <p className="text-[#8A8F8C] mb-8 max-w-xl">Shape a STAR story once and let Kukdi polish it — then reuse it across every company.</p>
+
+      {/* Story Matcher */}
+      <form onSubmit={runMatch} className="mb-4" data-testid="matcher-form">
+        <div className="flex items-center gap-3 bg-[#EFECE7] rounded-[2rem] px-6 py-4 focus-within:ring-1 focus-within:ring-[#9DB0A3] transition-all max-w-2xl">
+          <Wand2 size={18} strokeWidth={1.5} className="text-[#9DB0A3] shrink-0" />
+          <input
+            value={matchQuery}
+            onChange={(e) => setMatchQuery(e.target.value)}
+            placeholder="Which story fits… e.g. 'Google — a time I led without authority'"
+            data-testid="matcher-input"
+            className="flex-1 bg-transparent outline-none text-[#2C2D2B] placeholder-[#8A8F8C]"
+          />
+          <button type="submit" data-testid="matcher-submit" className="text-[#8A8F8C] hover:text-[#2C2D2B] transition-colors"><ArrowUpRight size={20} strokeWidth={1.5} /></button>
+        </div>
+      </form>
+
+      {(matching || matchResults !== null) && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-14 max-w-2xl" data-testid="matcher-results">
+          {matching && <p className="font-editorial text-xl italic text-[#8A8F8C]">Kukdi is matching your stories…</p>}
+          {!matching && matchResults?.length === 0 && <p className="text-[#8A8F8C]">No strong fit yet — maybe a new story is worth writing.</p>}
+          {!matching && matchResults?.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs tracking-[0.18em] uppercase text-[#9DB0A3]">Best fits</p>
+              {matchResults.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setActive(s)}
+                  data-testid={`match-${s.id}`}
+                  className="w-full text-left bg-[#EFECE7] rounded-2xl px-5 py-4 hover:bg-[#E6E2DC] transition-colors flex items-start justify-between gap-4"
+                >
+                  <div>
+                    <p className="text-lg text-[#2C2D2B]">{s.title}</p>
+                    <p className="text-sm text-[#8A8F8C] italic">{s.reason}</p>
+                  </div>
+                  <span className="text-[10px] tracking-[0.15em] uppercase text-[#9DB0A3] shrink-0 mt-1.5 capitalize">{s.fit}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       <div className="space-y-10">
         {stories.map((s) => (
