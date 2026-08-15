@@ -5,6 +5,7 @@ const SECTIONS = [
   { to: "/memory", title: "Memory", desc: "Everything Kukdi remembers about you — fully editable.", testId: "more-memory" },
   { to: "/calendar", title: "Calendar", desc: "Timetable, deadlines, exams and placements. Ask it anything.", testId: "more-calendar" },
   { to: "/reflection", title: "Weekly Reflection", desc: "A gentle Sunday recap of your week, in Kukdi's voice.", testId: "more-reflection" },
+  { to: "/stories", title: "Story Bank", desc: "Shape your STAR stories once, polish them with Kukdi, reuse everywhere.", testId: "more-stories" },
   { to: "/knowledge", title: "Knowledge", desc: "Documents, books, notes and frameworks. Search by meaning.", testId: "more-knowledge" },
   { to: "/talk", title: "Talk to Kukdi", desc: "The primary way in. Say it the way you'd think it.", testId: "more-talk" },
 ];

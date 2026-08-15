@@ -14,7 +14,7 @@ from models import new_id, now_iso
 COLLECTIONS = [
     "memories", "candidates", "conversations", "messages",
     "companies", "prep_items", "people", "events", "knowledge", "settings",
-    "countdowns",
+    "countdowns", "stories",
 ]
 
 
@@ -138,5 +138,25 @@ async def seed(force: bool = False) -> dict:
     await db.knowledge.insert_many(knowledge)
 
     await db.settings.insert_one({"id": "singleton", "home_state_override": None, "updated": now_iso()})
+
+    stories = [
+        {"id": new_id(), "title": "Turning around the ISB Marketing Club",
+         "situation": "The marketing club's flagship event had low turnout two years running and the team had lost momentum.",
+         "task": "As the incoming lead I needed to rebuild engagement and deliver a signature event within one term.",
+         "action": "I ran quick interviews with members to find what they actually wanted, repositioned the event around a live brand challenge, and split the team into small owned pods with clear deadlines.",
+         "result": "Attendance grew roughly 3x versus the prior year and two sponsors signed on for the next edition.",
+         "themes": ["leadership", "influence"], "tags": ["pm", "star"],
+         "companies_used": ["Google"], "status": "polished", "feedback": "",
+         "created": now_iso(), "updated": now_iso()},
+        {"id": new_id(), "title": "A decision I'd make differently",
+         "situation": "In a group project I pushed hard for a feature-rich prototype under time pressure.",
+         "task": "We had to ship a working demo in ten days for a graded review.",
+         "action": "I overloaded the scope and we spent too long polishing; I later cut features late and re-scoped around the core user need.",
+         "result": "We delivered on time but I learned to define the smallest valuable slice first — I now start every plan with the one job to be done.",
+         "themes": ["failure", "growth"], "tags": ["pm", "star"],
+         "companies_used": [], "status": "draft", "feedback": "",
+         "created": now_iso(), "updated": now_iso()},
+    ]
+    await db.stories.insert_many(stories)
 
     return {"seeded": True, "memories": len(memories), "companies": len(companies), "people": len(people)}

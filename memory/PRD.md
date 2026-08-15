@@ -34,6 +34,16 @@ memories, candidates, conversations, messages, companies, prep_items, people, ev
 knowledge, settings (singleton). Memory fields: type, title, description, confidence, status,
 source, relationships, tags, usable_for, created/updated/last_confirmed.
 
+## Implemented (2026-06 — V1.3)
+- **Smart Reminders** — calm, derived, dismissable nudges on Home (`GET /api/reminders`,
+  `POST /api/reminders/dismiss`): nearing deadlines/exams/placements, friends' birthdays
+  (within 21 days; parses "Month Day" and ISO dates), and open company next-steps. Computed,
+  not stored; only dismissals persist. Honours "calm over notifications".
+- **Story Bank** — structured STAR stories (`/stories`, `/api/stories` CRUD) tagged by theme and
+  companies used; **"Polish with Kukdi"** (`POST /api/stories/{id}/polish`) refines each STAR
+  part via Claude and returns a warm coaching note. Shape once, reuse everywhere.
+- Tested: frontend 100%, backend 100% (6/6). No defects.
+
 ## Implemented (2026-06 — V1.2)
 - **Semantic Search** (Knowledge) — "By meaning" mode; the reasoning engine ranks saved
   notes/PDFs by intent (finds CIRCLES for "how to structure a design interview answer") with

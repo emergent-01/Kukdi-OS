@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ChevronDown, RefreshCw } from "lucide-react";
+import { ArrowUpRight, ChevronDown, RefreshCw, Gift, Clock, X } from "lucide-react";
 import { api, formatTime } from "../lib/api";
 
 const STATES = [
@@ -20,13 +20,20 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [brief, setBrief] = useState(null);
   const [briefLoading, setBriefLoading] = useState(false);
+  const [reminders, setReminders] = useState([]);
   const navigate = useNavigate();
 
   const load = () => api.home().then(setData).catch(() => {});
   useEffect(() => {
     load();
     api.brief().then((d) => setBrief(d.brief)).catch(() => {});
+    api.reminders().then((d) => setReminders(d.reminders || [])).catch(() => {});
   }, []);
+
+  const dismissReminder = async (id) => {
+    setReminders((r) => r.filter((x) => x.id !== id));
+    await api.dismissReminder(id);
+  };
 
   const refreshBrief = async () => {
     setBriefLoading(true);
@@ -128,6 +135,40 @@ export default function Home() {
           <p className="font-editorial text-2xl md:text-[26px] italic text-[#5C605A] leading-snug" data-testid="brief-text">
             {briefLoading && !brief ? "Kukdi is reading your day…" : brief}
           </p>
+        </motion.section>
+      )}
+
+      {/* Smart reminders — gentle, dismissable nudges */}
+      {reminders.length > 0 && (
+        <motion.section {...fade} className="mt-16" data-testid="home-reminders">
+          <h2 className="text-xs tracking-[0.18em] uppercase text-[#8A8F8C] mb-5">A gentle nudge</h2>
+          <div className="space-y-2">
+            {reminders.slice(0, 4).map((r) => (
+              <div
+                key={r.id}
+                className="flex items-center gap-4 bg-[#EFECE7] rounded-2xl px-5 py-3.5 group"
+                data-testid={`reminder-${r.id}`}
+              >
+                {r.kind === "birthday" ? (
+                  <Gift size={17} strokeWidth={1.5} className="text-[#9DB0A3] shrink-0" />
+                ) : r.kind === "next-step" ? (
+                  <ArrowUpRight size={17} strokeWidth={1.5} className="text-[#9DB0A3] shrink-0" />
+                ) : (
+                  <Clock size={17} strokeWidth={1.5} className="text-[#9DB0A3] shrink-0" />
+                )}
+                <span className="flex-1 text-[#2C2D2B]">{r.title}</span>
+                <span className="text-sm text-[#8A8F8C] whitespace-nowrap">{r.detail}</span>
+                <button
+                  onClick={() => dismissReminder(r.id)}
+                  data-testid={`reminder-dismiss-${r.id}`}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[#8A8F8C] hover:text-[#2C2D2B]"
+                  title="Dismiss"
+                >
+                  <X size={15} strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
+          </div>
         </motion.section>
       )}
 

@@ -12,6 +12,8 @@ export const api = {
   setState: (state) => http.post("/home/state", { state }).then((r) => r.data),
   brief: () => http.get("/home/brief").then((r) => r.data),
   refreshBrief: () => http.post("/home/brief/refresh").then((r) => r.data),
+  reminders: () => http.get("/reminders").then((r) => r.data),
+  dismissReminder: (id) => http.post("/reminders/dismiss", { id }).then((r) => r.data),
 
   // Conversation
   sendMessage: (text, conversation_id) =>
@@ -64,6 +66,13 @@ export const api = {
   // Reflection
   weeklyReflection: (refresh = false) =>
     http.get("/reflection/weekly", { params: { refresh } }).then((r) => r.data),
+
+  // Story Bank
+  stories: () => http.get("/stories").then((r) => r.data),
+  createStory: (body) => http.post("/stories", body).then((r) => r.data),
+  updateStory: (id, body) => http.patch(`/stories/${id}`, body).then((r) => r.data),
+  polishStory: (id) => http.post(`/stories/${id}/polish`).then((r) => r.data),
+  deleteStory: (id) => http.delete(`/stories/${id}`).then((r) => r.data),
 
   // Knowledge
   knowledge: (q) => http.get("/knowledge", { params: { q } }).then((r) => r.data),

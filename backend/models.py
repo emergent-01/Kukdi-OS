@@ -187,3 +187,31 @@ class TaskToggleIn(BaseModel):
 
 class StateOverrideIn(BaseModel):
     state: Optional[str] = None  # null clears the override
+
+
+class ReminderDismissIn(BaseModel):
+    id: str
+
+
+class StoryIn(BaseModel):
+    title: str
+    situation: str = ""
+    task: str = ""
+    action: str = ""
+    result: str = ""
+    themes: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    companies_used: List[str] = Field(default_factory=list)
+    status: str = "draft"  # draft | polished
+
+
+class StoryUpdate(BaseModel):
+    title: Optional[str] = None
+    situation: Optional[str] = None
+    task: Optional[str] = None
+    action: Optional[str] = None
+    result: Optional[str] = None
+    themes: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    companies_used: Optional[List[str]] = None
+    status: Optional[str] = None

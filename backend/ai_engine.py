@@ -282,5 +282,37 @@ class KukdiReasoning:
         except Exception:
             return []
 
+    async def polish_story(self, story: Dict) -> Dict:
+        system = (
+            f"{_PERSONA}\n\n"
+            "You are coaching Little Miss on a behavioural (STAR) interview story for "
+            "Product Management roles. Sharpen each part: make the Situation concise, "
+            "the Task clear, the Action specific and first-person ('I…'), and the "
+            "Result quantified where possible. Keep her authentic voice. Return ONLY "
+            'JSON: {"situation":"...","task":"...","action":"...","result":"...",'
+            '"feedback":"one warm sentence of coaching"}.'
+        )
+        chat = self._chat(system, f"kukdi-story-{new_id()}")
+        prompt = (
+            f"Title: {story.get('title','')}\n"
+            f"Situation: {story.get('situation','')}\n"
+            f"Task: {story.get('task','')}\n"
+            f"Action: {story.get('action','')}\n"
+            f"Result: {story.get('result','')}\n\nPolish it."
+        )
+        try:
+            raw = await chat.send_message(UserMessage(text=prompt))
+            data = _parse_json(raw)
+            return {
+                "situation": data.get("situation", story.get("situation", "")),
+                "task": data.get("task", story.get("task", "")),
+                "action": data.get("action", story.get("action", "")),
+                "result": data.get("result", story.get("result", "")),
+                "feedback": data.get("feedback", ""),
+            }
+        except Exception:
+            return {**{k: story.get(k, "") for k in ("situation", "task", "action", "result")},
+                    "feedback": "I couldn't refine this just now — try again in a moment."}
+
 
 reasoning = KukdiReasoning()
